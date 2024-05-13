@@ -8,7 +8,7 @@ This repository is the official PyTorch implementation of the work:
 ## Overview
 
 <div align=center>
-<img src="https://github.com/AI-Application-and-Integration-Lab/RDPN6D/blob/main/teaser.png" width="1600" height="800" />
+<img src="https://github.com/AI-Application-and-Integration-Lab/RDPN6D/blob/main/teaser.png" width="800" height="400" />
 </div>
 
 
