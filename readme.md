@@ -24,16 +24,30 @@ This repository is the official PyTorch implementation of the work:
 
 ## Datasets
 Download the 6D pose datasets (LM, LM-O, YCB-V) from the
-[BOP website](https://bop.felk.cvut.cz/datasets/) and MP6D from
-Please also download the `image_sets` and `test_bboxes` from
-here ([BaiduNetDisk](https://pan.baidu.com/s/1gGoZGkuMYxhU9LBKxuSz0g), [OneDrive](https://1drv.ms/u/s!Ah83ZdJvIaBnnjqVy9Eyn0yxDb8i?e=0Q3qRU), password: qjfk).
+[BOP website](https://bop.felk.cvut.cz/datasets/) and MP6D from [MP6D](https://github.com/yhan9848/MP6D)
+
+Please also download the metadata from [[Metadata](https://drive.google.com/drive/folders/1X95-ohc2b6iMTPEl-p4INn63vWx6IWuz?usp=drive_link)].
 
 The structure of `datasets` folder should look like below:
 ```
 # recommend using soft links (ln -sf)
 datasets/
+├── lm_imgn
+├── VOCdevkit
 ├── BOP_DATASETS
     ├──lm
+        ├──lm
+        ├──train
+        ├──train_pbr
+            ├──xyz_crop
+            ├──......
+        ├──test
+            ├──xyz_crop
+            ├──......
+        ├──image_set
+        ├──models
+        ├──models_eval
+        ├──test_targets_bop19.json
     ├──lmo
         ├──train_pbr
             ├──xyz_crop
@@ -63,7 +77,8 @@ datasets/
         ├──models_eval
         ├──models_fine
         ├──ycbv
-        ├──
+        ├──test_targets_bop19.json
+        ├──test_targets_keyframe.json
     ├──mp6d
         ├──data
         ├──data_syn_1
@@ -76,12 +91,15 @@ datasets/
 
 ```
 
-* `lm_imgn` comes from [DeepIM](https://github.com/liyi14/mx-DeepIM), which can be downloaded here ([BaiduNetDisk](https://pan.baidu.com/s/1e9SJoqb0EmyqVLEVlbNQIA), [OneDrive](https://1drv.ms/u/s!Ah83ZdJvIaBnoEz5BM4Ho6_W_UUA?e=pj7Y7i), password: vr0i).
-
-* `lm_renders_blender` comes from [pvnet-rendering](https://github.com/zju3dv/pvnet-rendering), note that we do not need the fused data.
-
 
 ## Training RDPN
+`./core/gdrn_modeling/train_gdrn.sh <config_path> <gpu_ids> (other args)`
+
+Example:
+```
+./core/gdrn_modeling/train_gdrn.sh configs/gdrn/lm/a6_cPnP_lm13.py 0  # multiple gpus: 0,1,2,3
+# add --resume if you want to resume from an interrupted experiment.
+```
 
 
 ## Evaluation
