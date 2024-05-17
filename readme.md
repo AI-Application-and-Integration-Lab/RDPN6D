@@ -3,7 +3,7 @@ This repository is the official PyTorch implementation of the work:
 
 ***RDPN6D: Residual-based Dense Point-wise Network for 6Dof Object Pose Estimation Based on RGB-D Images, CVPR Workshiop DLGC, 2024***
 
-[[Paper]([https://drive.google.com/file/d/1L2YlG-hVJsCGoJVXIzRfEMh9QMBI935X/view?usp=drive_link](https://arxiv.org/abs/2405.08483)]
+[[Paper](https://arxiv.org/abs/2405.08483)]
 
 ## Overview
 
