@@ -3,8 +3,14 @@ This repository is the official PyTorch implementation of the work:
 
 ***RDPN6D: Residual-based Dense Point-wise Network for 6Dof Object Pose Estimation Based on RGB-D Images, CVPR Workshiop DLGC, 2024***
 
-[[Paper](https://arxiv.org/abs/2405.08483)]
+[[Paper](https://openaccess.thecvf.com/content/CVPR2024W/DLGC/papers/Hong_RDPN6D_Residual-based_Dense_Point-wise_Network_for_6Dof_Object_Pose_Estimation_CVPRW_2024_paper.pdf)]
+[[Supp](https://openaccess.thecvf.com/content/CVPR2024W/DLGC/supplemental/Hong_RDPN6D_Residual-based_Dense_CVPRW_2024_supplemental.pdf)]
 
+
+## News
+[2024/07] Updated the requirements.txt and fixed some bugs.
+
+[2024/06] Our paper was awarded Best Paper at the sixth DLGC. Congratulations!
 ## Overview
 
 <div align=center>
@@ -264,6 +270,21 @@ Our trained RDPN models can be found here
 <img src="https://github.com/AI-Application-and-Integration-Lab/RDPN6D/blob/main/vis.png" width="800" height="800" />
 </div>
 
+
+
+## Citation
+If you find this useful in your research, please cite our paper:
+
+```
+@InProceedings{Hong_2024_CVPR,
+    author    = {Hong, Zong-Wei and Hung, Yen-Yang and Chen, Chu-Song},
+    title     = {RDPN6D: Residual-based Dense Point-wise Network for 6Dof Object Pose Estimation Based on RGB-D Images},
+    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops},
+    month     = {June},
+    year      = {2024},
+    pages     = {5251-5260}
+}
+```
 ## Acknowledgment
 
 This work can not be finished well without the following reference, many thanks for the author's contribution:
