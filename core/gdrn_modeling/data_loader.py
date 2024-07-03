@@ -833,7 +833,7 @@ class GDRN_DatasetFromList(Base_DatasetFromList):
         ).transpose(2, 0, 1)
 
         # ablation study :
-        #roi_coord_2d = np.concatenate((depth_xyz[:, ::4, ::4], roi_coord_2d))
+        roi_coord_2d = np.concatenate((depth_xyz[:, ::4, ::4], roi_coord_2d))
         # roi_mask ---------------------------------------
         # (mask_trunc < mask_visib < mask_obj)
         mask_visib = anno["segmentation"].astype("float32") * mask_obj
