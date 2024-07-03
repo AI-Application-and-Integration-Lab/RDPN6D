@@ -118,11 +118,8 @@ def build_gdrn_augmentation(cfg, is_train):
     if sample_style == "range":
         assert len(min_size) == 2, "more than 2 ({}) min_size(s) are provided for ranges".format(
             len(min_size))
-
     augmentation = []
-    if 'tless' not in cfg.DATASETS.TRAIN[0]:
-        augmentation.append(T.ResizeShortestEdge(
-            min_size, max_size, sample_style))
+    augmentation.append(T.ResizeShortestEdge(min_size, max_size, sample_style))
     if is_train:
         # augmentation.append(T.RandomFlip())
         logger.info("Augmentations used in training: " + str(augmentation))
@@ -565,11 +562,7 @@ class GDRN_DatasetFromList(Base_DatasetFromList):
                 else:
                     depth_img2 = depth_img2 / resize_ratio
                     newCameraK = np.matmul(offset_matrix, K)
-                # 20240131
-                org_cam_cx = K[0][2]
-                org_cam_cy = K[1][2]
-                org_cam_fx = K[0][0]
-                org_cam_fy = K[1][1]
+
                 cam_cx = newCameraK[0][2]
                 cam_cy = newCameraK[1][2]
                 cam_fx = newCameraK[0][0]
@@ -577,14 +570,8 @@ class GDRN_DatasetFromList(Base_DatasetFromList):
                 xmap_masked = xmap[:, :, np.newaxis]
                 ymap_masked = ymap[:, :, np.newaxis]
                 pt2 = depth_img2.astype(np.float32)
-                org_pt2 = (depth_img2 * resize_ratio).astype(np.float32)
-                org_pt0 = (xmap_masked - org_cam_cx) * org_pt2 / org_cam_fx
-                org_pt1 = (ymap_masked - org_cam_cy) * org_pt2 / org_cam_fy
-
                 pt0 = (xmap_masked - cam_cx) * pt2 / cam_fx
                 pt1 = (ymap_masked - cam_cy) * pt2 / cam_fy
-                org_depth_xyz = np.concatenate(
-                    (org_pt0, org_pt1, org_pt2), axis=2).transpose(2, 0, 1)
                 depth_xyz = np.concatenate(
                     (pt0, pt1, pt2), axis=2).transpose(2, 0, 1)
 
@@ -635,9 +622,7 @@ class GDRN_DatasetFromList(Base_DatasetFromList):
                 )  # HWC -> CHW
 
                 roi_coord_2d = np.concatenate(
-                    (depth_xyz[:, ::4, ::4], roi_coord_2d))
-                roi_coord_2d = np.concatenate(
-                    (org_depth_xyz[:, ::4, ::4], roi_coord_2d))
+                   (depth_xyz[:, ::4, ::4], roi_coord_2d))
                 roi_infos["roi_coord_2d"].append(
                     roi_coord_2d.astype("float32"))
 
@@ -848,7 +833,7 @@ class GDRN_DatasetFromList(Base_DatasetFromList):
         ).transpose(2, 0, 1)
 
         # ablation study :
-        roi_coord_2d = np.concatenate((depth_xyz[:, ::4, ::4], roi_coord_2d))
+        #roi_coord_2d = np.concatenate((depth_xyz[:, ::4, ::4], roi_coord_2d))
         # roi_mask ---------------------------------------
         # (mask_trunc < mask_visib < mask_obj)
         mask_visib = anno["segmentation"].astype("float32") * mask_obj

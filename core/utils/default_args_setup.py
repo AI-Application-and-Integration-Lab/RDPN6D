@@ -34,15 +34,11 @@ Run on multiple machines:
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--config-file", default="",
-                        metavar="FILE", help="path to config file")
+    parser.add_argument("--config-file", default="", metavar="FILE", help="path to config file")
     parser.add_argument(
         "--resume", action="store_true", help="whether to attempt to resume from the checkpoint directory"
     )
-    parser.add_argument("--save_res", action="store_true",
-                        help="perform evaluation only")
-    parser.add_argument("--eval-only", action="store_true",
-                        help="perform evaluation only")
+    parser.add_argument("--eval-only", action="store_true", help="perform evaluation only")
     # hvd ======
     parser.add_argument(
         "--use-hvd", action="store_true", default=False, help="use horovod for distributed/multi-gpu training"
@@ -50,21 +46,16 @@ Run on multiple machines:
     parser.add_argument(
         "--fp16_allreduce", action="store_true", default=False, help="use fp16 compression during allreduce for hvd"
     )
-    parser.add_argument("--use-adasum", action="store_true",
-                        default=False, help="use adasum algorithm to do reduction")
+    parser.add_argument("--use-adasum", action="store_true", default=False, help="use adasum algorithm to do reduction")
     # -----------
-    parser.add_argument("--num-gpus", type=int, default=1,
-                        help="number of gpus *per machine*")
-    parser.add_argument("--num-machines", type=int,
-                        default=1, help="total number of machines")
-    parser.add_argument("--machine-rank", type=int, default=0,
-                        help="the rank of this machine (unique per machine)")
+    parser.add_argument("--num-gpus", type=int, default=1, help="number of gpus *per machine*")
+    parser.add_argument("--num-machines", type=int, default=1, help="total number of machines")
+    parser.add_argument("--machine-rank", type=int, default=0, help="the rank of this machine (unique per machine)")
 
     # PyTorch still may leave orphan processes in multi-gpu training.
     # Therefore we use a deterministic way to obtain port,
     # so that users are aware of orphan processes by seeing the port occupied.
-    port = 2 ** 15 + 2 ** 14 + \
-        hash(os.getuid() if sys.platform != "win32" else 1) % 2 ** 14
+    port = 2 ** 15 + 2 ** 14 + hash(os.getuid() if sys.platform != "win32" else 1) % 2 ** 14
     parser.add_argument(
         "--dist-url",
         default="tcp://127.0.0.1:{}".format(port),
@@ -96,16 +87,14 @@ def my_default_setup(cfg, args):
     for _mod in ["PIL", "chardet"]:  # disable DEBUG logs
         logging.getLogger(_mod).setLevel(logging.INFO)
 
-    logger.info("Rank of current process: {}. World size: {}".format(
-        rank, comm.get_world_size()))
+    logger.info("Rank of current process: {}. World size: {}".format(rank, comm.get_world_size()))
     logger.info("Environment info:\n" + collect_env_info())
 
     logger.info("Command line arguments: " + str(args))
     if hasattr(args, "config_file") and args.config_file != "":
         logger.info(
             "Contents of args.config_file={}:\n{}".format(
-                args.config_file, PathManager.open(
-                    args.config_file, "r").read()
+                args.config_file, PathManager.open(args.config_file, "r").read()
             )
         )
 

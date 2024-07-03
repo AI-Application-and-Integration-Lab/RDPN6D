@@ -543,6 +543,7 @@ class GDRN_EvaluatorCustom(DatasetEvaluator):
             "ad_2",
             "ad_5",
             "ad_10",
+            "adi_10",
             "rete_2",
             "rete_5",
             "rete_10",
@@ -609,8 +610,11 @@ class GDRN_EvaluatorCustom(DatasetEvaluator):
                     proj_2d_error = arp_2d(
                         R_pred, t_pred, R_gt, t_gt, pts=self.models_3d[cur_label]["pts"], K=gt_anno["K"]
                     )
-
                     ad_error = add(
+                        R_pred, t_pred, R_gt, t_gt, pts=self.models_3d[self.obj_names.index(
+                            obj_name)]["pts"]
+                    )
+                    adi_error = adi(
                         R_pred, t_pred, R_gt, t_gt, pts=self.models_3d[self.obj_names.index(
                             obj_name)]["pts"]
                     )
@@ -640,6 +644,8 @@ class GDRN_EvaluatorCustom(DatasetEvaluator):
                     float(ad_error < 0.05 * self.diameters[cur_label]))
                 recalls[obj_name]["ad_10"].append(
                     float(ad_error < 0.1 * self.diameters[cur_label]))
+                recalls[obj_name]["adi_10"].append(
+                    float(adi_error < 0.1 * self.diameters[cur_label]))
                 # deg, cm
                 recalls[obj_name]["rete_2"].append(
                     float(r_error < 2 and t_error < 0.02))

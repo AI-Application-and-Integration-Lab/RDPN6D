@@ -1,7 +1,6 @@
 import logging
 
 import numpy as np
-import open3d as o3d
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -105,42 +104,6 @@ class GDRN(nn.Module):
                         [0.0], requires_grad=True, dtype=torch.float32))
                 )
 
-    def best_fit_transform(self, A, B):
-        '''
-        Calculates the least-squares best-fit transform that maps corresponding points A to B in m spatial dimensions
-        Input:
-            A: Nxm numpy array of corresponding points, usually points on mdl
-            B: Nxm numpy array of corresponding points, usually points on camera axis
-        Returns:
-        T: (m+1)x(m+1) homogeneous transformation matrix that maps A on to B
-        R: mxm rotation matrix
-        t: mx1 translation vector
-        '''
-
-        assert A.shape == B.shape
-        # get number of dimensions
-        m = A.shape[1]
-        # translate points to their centroids
-        centroid_A = np.mean(A, axis=0)
-        centroid_B = np.mean(B, axis=0)
-        AA = A - centroid_A
-        BB = B - centroid_B
-        # rotation matirx
-        H = np.dot(AA.T, BB)
-        U, S, Vt = np.linalg.svd(H)
-        R = np.dot(Vt.T, U.T)
-        # special reflection case
-        if np.linalg.det(R) < 0:
-            Vt[m-1, :] *= -1
-            R = np.dot(Vt.T, U.T)
-        # translation
-        t = (centroid_B.T - np.dot(R, centroid_A.T)).reshape((3, 1))
-        return torch.from_numpy(R.reshape(1, 3, 3)).cuda(), torch.from_numpy(t.T).cuda()
-        T = np.zeros((3, 4))
-        T[:, :3] = R
-        T[:, 3] = t
-        return T
-
     def forward(
         self,
         x,
@@ -234,9 +197,7 @@ class GDRN(nn.Module):
                 [coor_x_softmax, coor_y_softmax, coor_z_softmax], dim=1)
         else:
             coor_feat = torch.cat([coor_x, coor_y, coor_z], dim=1)  # BCHW
-        # 0-2 predicted residual
-        # 3-7 depth[3:6] 6:7
-        # 8-10 coarse
+
         if pnp_net_cfg.WITH_2D_COORD:
             assert roi_coord_2d is not None
             coor_feat = torch.cat([coor_feat, roi_coord_2d], dim=1)
@@ -290,7 +251,6 @@ class GDRN(nn.Module):
         else:
             raise RuntimeError(f"Wrong pred_rot_ dim: {pred_rot_.shape}")
         # convert pred_rot_m and pred_t to ego pose -----------------------------
-        pnp_net_cfg.TRANS_TYPE = "lsf"
         if pnp_net_cfg.TRANS_TYPE == "centroid_z":
             pred_ego_rot, pred_trans = pose_from_pred_centroid_z(
                 pred_rot_m,
@@ -323,33 +283,6 @@ class GDRN(nn.Module):
             pred_ego_rot, pred_trans = pose_from_pred(
                 pred_rot_m, pred_t_, eps=1e-4, is_allo="allo" in pnp_net_cfg.ROT_TYPE, is_train=do_loss
             )
-        elif pnp_net_cfg.TRANS_TYPE == "lsf":
-            coor_feat[:, :3, :, :] = (
-                coor_feat[:, :3, :, :] - 0.5) * roi_extents.view(bs, 3, 1, 1)
-            obj_coor = coor_feat[:, :3, :, :] + coor_feat[:, 11:, :, :]
-            obj_coor = torch.masked_select(obj_coor.view(
-                3, 4096), (mask_atten > 0.5).view(1, 4096)).view(3, -1)
-            cam_coor = torch.masked_select(coor_feat[:, 6:9, :, :].view(
-                3, 4096), (mask_atten > 0.5).view(1, 4096)).view(3, -1)
-            cam_coor_o3d = o3d.geometry.PointCloud()
-            cam_coor_o3d.points = o3d.utility.Vector3dVector(
-                cam_coor.cpu().numpy().T)
-            cam_coor_o3d.paint_uniform_color([1, 0.706, 0])
-            obj_coor_o3d = o3d.geometry.PointCloud()
-            obj_coor_o3d.points = o3d.utility.Vector3dVector(
-                obj_coor.cpu().numpy().T)
-            obj_coor_o3d.paint_uniform_color([0, 0.651, 0.929])
-           # o3d.visualization.draw_geometries([obj_coor_o3d, cam_coor_o3d])
-        #     [scene, tmp], window_name='gt vs est after icp')
-            pred_ego_rot, pred_trans = self.best_fit_transform(
-                obj_coor.T.cpu().numpy(), cam_coor.T.cpu().numpy())
-            a = np.zeros((4, 4))
-            a[:3, :3] = pred_ego_rot.cpu().numpy()
-            a[:3, 3:4] = pred_trans.cpu().numpy().T
-            a[3, 3] = 1
-            obj_coor_o3d.transform(a)
-            #o3d.visualization.draw_geometries([obj_coor_o3d, cam_coor_o3d])
-        #     [scene, tmp], window_name='gt vs est after icp')
         else:
             raise ValueError(
                 f"Unknown pnp_net trans type: {pnp_net_cfg.TRANS_TYPE}")

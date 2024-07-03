@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 from torch import nn
 from torch.nn.modules.batchnorm import _BatchNorm
@@ -71,7 +70,7 @@ class ConvPnPNet(nn.Module):
             stop_value=drop_prob,
             nr_steps=5000,
         )
-        nIn = 46  # * new
+        nIn = 43  # * new
         assert num_layers >= 3, num_layers
         self.features = nn.ModuleList()
         for i in range(3):
@@ -120,11 +119,8 @@ class ConvPnPNet(nn.Module):
             x: (B,C,H,W)
             extents: (B, 3)
         Returns:
-        # 0-2 predicted residual 
-        # 3-7 depth[3:6] 6:7
-        # 8-10 coarse
-        """
 
+        """
         bs, in_c, fh, fw = coor_feat.shape
         if in_c == 3 or in_c == 5 or in_c == 6 or in_c == 8:
             coor_feat[:, :3, :, :] = (

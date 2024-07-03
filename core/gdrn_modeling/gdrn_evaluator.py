@@ -18,7 +18,6 @@ import ref
 import torch
 from core.utils.my_comm import all_gather, get_world_size, is_main_process, synchronize
 from detectron2.data import MetadataCatalog
-from detectron2.layers import paste_masks_in_image
 from detectron2.evaluation import DatasetEvaluator, DatasetEvaluators, inference_context
 from detectron2.utils.logger import log_every_n_seconds
 from lib.pysixd import inout, misc
@@ -50,8 +49,7 @@ class GDRN_Evaluator(DatasetEvaluator):
         self._metadata = MetadataCatalog.get(dataset_name)
         self.data_ref = ref.__dict__[self._metadata.ref_key]
         self.obj_names = self._metadata.objs
-        self.obj_ids = [self.data_ref.obj2id[obj_name]
-                        for obj_name in self.obj_names]
+        self.obj_ids = [self.data_ref.obj2id[obj_name] for obj_name in self.obj_names]
         # with contextlib.redirect_stdout(io.StringIO()):
         #     self._coco_api = COCO(self._metadata.json_file)
         self.model_paths = [
@@ -63,8 +61,7 @@ class GDRN_Evaluator(DatasetEvaluator):
 
         # eval cached
         if cfg.VAL.EVAL_CACHED or cfg.VAL.EVAL_PRINT_ONLY:
-            eval_cached_results(self.cfg, self._output_dir,
-                                obj_ids=self.obj_ids)
+            eval_cached_results(self.cfg, self._output_dir, obj_ids=self.obj_ids)
 
     def reset(self):
         self._predictions = []
@@ -85,10 +82,8 @@ class GDRN_Evaluator(DatasetEvaluator):
         avgx = np.average(pts[:, 0])
         avgy = np.average(pts[:, 1])
         avgz = np.average(pts[:, 2])
-        fps_pts = farthest_point_sampling(
-            pts, num_fps, init_center=init_center)
-        res_pts = np.concatenate(
-            [fps_pts, np.array([[avgx, avgy, avgz]])], axis=0)
+        fps_pts = farthest_point_sampling(pts, num_fps, init_center=init_center)
+        res_pts = np.concatenate([fps_pts, np.array([[avgx, avgy, avgz]])], axis=0)
         return res_pts
 
     def get_img_model_points_with_coords2d(
@@ -163,8 +158,7 @@ class GDRN_Evaluator(DatasetEvaluator):
 
                 roi_label = _input["roi_cls"][inst_i]  # 0-based label
                 score = _input["score"][inst_i]
-                roi_label, cls_name = self._maybe_adapt_label_cls_name(
-                    roi_label)
+                roi_label, cls_name = self._maybe_adapt_label_cls_name(roi_label)
                 if cls_name is None:
                     continue
 
@@ -180,8 +174,7 @@ class GDRN_Evaluator(DatasetEvaluator):
 
                 json_results.extend(
                     self.pose_prediction_to_json(
-                        pose_est, scene_id, im_id, obj_id=obj_id, score=score, pose_time=output[
-                            "time"], K=K
+                        pose_est, scene_id, im_id, obj_id=obj_id, score=score, pose_time=output["time"], K=K
                     )
                 )
 
@@ -223,8 +216,7 @@ class GDRN_Evaluator(DatasetEvaluator):
                 cx_i, cy_i = bbox_center_i
                 scale_i = _input["scale"][inst_i]
 
-                coord_2d_i = _input["roi_coord_2d"][inst_i].cpu(
-                ).numpy().transpose(1, 2, 0)  # CHW->HWC
+                coord_2d_i = _input["roi_coord_2d"][inst_i].cpu().numpy().transpose(1, 2, 0)  # CHW->HWC
                 im_H = _input["im_H"][inst_i]
                 im_W = _input["im_W"][inst_i]
 
@@ -233,8 +225,7 @@ class GDRN_Evaluator(DatasetEvaluator):
 
                 roi_label = _input["roi_cls"][inst_i]  # 0-based label
                 score = _input["score"][inst_i]
-                roi_label, cls_name = self._maybe_adapt_label_cls_name(
-                    roi_label)
+                roi_label, cls_name = self._maybe_adapt_label_cls_name(roi_label)
                 if cls_name is None:
                     continue
 
@@ -263,10 +254,8 @@ class GDRN_Evaluator(DatasetEvaluator):
                 num_points = len(img_points)
                 if num_points >= 4:
                     dist_coeffs = np.zeros(shape=[8, 1], dtype="float64")
-                    points_2d = np.ascontiguousarray(
-                        img_points.astype(np.float64))
-                    points_3d = np.ascontiguousarray(
-                        model_points.astype(np.float64))
+                    points_2d = np.ascontiguousarray(img_points.astype(np.float64))
+                    points_3d = np.ascontiguousarray(model_points.astype(np.float64))
                     camera_matrix = K.astype(np.float64)
 
                     rvec0, _ = cv2.Rodrigues(rot_est_net)
@@ -303,22 +292,17 @@ class GDRN_Evaluator(DatasetEvaluator):
                     rot_est, _ = cv2.Rodrigues(rvec)
                     diff_t_est = te(t_est, trans_est_net)
                     if diff_t_est > 1:  # diff too large
-                        self._logger.warning(
-                            "translation error too large: {}".format(diff_t_est))
+                        self._logger.warning("translation error too large: {}".format(diff_t_est))
                         t_est = trans_est_net
-                    pose_est = np.concatenate(
-                        [rot_est, t_est.reshape((3, 1))], axis=-1)
+                    pose_est = np.concatenate([rot_est, t_est.reshape((3, 1))], axis=-1)
                 else:
-                    self._logger.warning(
-                        "num points: {}".format(len(img_points)))
-                    pose_est_net = np.hstack(
-                        [rot_est_net, trans_est_net.reshape(3, 1)])
+                    self._logger.warning("num points: {}".format(len(img_points)))
+                    pose_est_net = np.hstack([rot_est_net, trans_est_net.reshape(3, 1)])
                     pose_est = pose_est_net
 
                 json_results.extend(
                     self.pose_prediction_to_json(
-                        pose_est, scene_id, im_id, obj_id=obj_id, score=score, pose_time=output[
-                            "time"], K=K
+                        pose_est, scene_id, im_id, obj_id=obj_id, score=score, pose_time=output["time"], K=K
                     )
                 )
 
@@ -358,8 +342,7 @@ class GDRN_Evaluator(DatasetEvaluator):
                 cx_i, cy_i = bbox_center_i
                 scale_i = _input["scale"][inst_i]
 
-                coord_2d_i = _input["roi_coord_2d"][inst_i].cpu(
-                ).numpy().transpose(1, 2, 0)  # CHW->HWC
+                coord_2d_i = _input["roi_coord_2d"][inst_i].cpu().numpy().transpose(1, 2, 0)  # CHW->HWC
                 im_H = _input["im_H"][inst_i]
                 im_W = _input["im_W"][inst_i]
 
@@ -368,8 +351,7 @@ class GDRN_Evaluator(DatasetEvaluator):
 
                 roi_label = _input["roi_cls"][inst_i]  # 0-based label
                 score = _input["score"][inst_i]
-                roi_label, cls_name = self._maybe_adapt_label_cls_name(
-                    roi_label)
+                roi_label, cls_name = self._maybe_adapt_label_cls_name(roi_label)
                 if cls_name is None:
                     continue
 
@@ -409,8 +391,7 @@ class GDRN_Evaluator(DatasetEvaluator):
                             # ransac_iter=150,
                         )
                     else:
-                        self._logger.warning(
-                            "num points: {}".format(len(img_points)))
+                        self._logger.warning("num points: {}".format(len(img_points)))
                         pose_est = -100 * np.ones((3, 4), dtype=np.float32)
 
                 if "trans" in cfg.MODEL.CDPN.TASK.lower():
@@ -429,8 +410,7 @@ class GDRN_Evaluator(DatasetEvaluator):
                     ox_2d = trans_i[0] * bw_ori + cx_i
                     oy_2d = trans_i[1] * bh_ori + cy_i
 
-                    # out_res / scale
-                    resize_ratio = _input["resize_ratio"][inst_i]
+                    resize_ratio = _input["resize_ratio"][inst_i]  # out_res / scale
                     tz = trans_i[2] * resize_ratio
 
                     tx = (ox_2d - K[0, 2]) * tz / K[0, 0]
@@ -440,13 +420,11 @@ class GDRN_Evaluator(DatasetEvaluator):
                     if "rot" in cfg.MODEL.CDPN.TASK.lower():
                         pose_est[:3, 3] = pred_trans
                     else:
-                        pose_est = np.concatenate(
-                            [np.eye(3), np.asarray(pred_trans.reshape(3, 1))], axis=1)
+                        pose_est = np.concatenate([np.eye(3), np.asarray(pred_trans.reshape(3, 1))], axis=1)
 
                 json_results.extend(
                     self.pose_prediction_to_json(
-                        pose_est, scene_id, im_id, obj_id=obj_id, score=score, pose_time=output[
-                            "time"], K=K
+                        pose_est, scene_id, im_id, obj_id=obj_id, score=score, pose_time=output["time"], K=K
                     )
                 )
 
@@ -475,8 +453,7 @@ class GDRN_Evaluator(DatasetEvaluator):
         """
         self._logger.info("Eval results with BOP toolkit ...")
         results_all = {"iter0": self._predictions}
-        save_and_eval_results(self.cfg, results_all,
-                              self._output_dir, obj_ids=self.obj_ids)
+        save_and_eval_results(self.cfg, results_all, self._output_dir, obj_ids=self.obj_ids)
         return {}
 
     def pose_from_upnp(self, mean_pts2d, covar, points_3d, K):
@@ -535,17 +512,16 @@ class GDRN_Evaluator(DatasetEvaluator):
         results.append(result)
         return results
 
-
 def test_coordinate_regression(cfg, model, data_loader, evaluator, amp_test=False):
     """
     """
     x = 0
-    y = 0
+    y = 0 
     z = 0
     i = 0
     with inference_context(model), torch.no_grad():
         for idx, inputs in enumerate(data_loader):
-
+            
             #############################
             # process input
             if not isinstance(inputs, list):  # bs=1
@@ -575,205 +551,24 @@ def test_coordinate_regression(cfg, model, data_loader, evaluator, amp_test=Fals
             gt_xyz = batch['roi_xyz']
             gt_mask_xyz = out_dict['mask']
             xx = loss_func(
-                out_x * gt_mask_xyz[:, None], gt_xyz[:,
-                                                     0:1] * gt_mask_xyz[:, None]
+                out_x * gt_mask_xyz[:, None], gt_xyz[:, 0:1] * gt_mask_xyz[:, None]
             ) / gt_mask_xyz.sum().float().clamp(min=1.0)
-
+           
             yy = loss_func(
-                out_y * gt_mask_xyz[:, None], gt_xyz[:,
-                                                     1:2] * gt_mask_xyz[:, None]
+                out_y * gt_mask_xyz[:, None], gt_xyz[:, 1:2] * gt_mask_xyz[:, None]
             ) / gt_mask_xyz.sum().float().clamp(min=1.0)
             zz = loss_func(
-                out_z * gt_mask_xyz[:, None], gt_xyz[:,
-                                                     2:3] * gt_mask_xyz[:, None]
+                out_z * gt_mask_xyz[:, None], gt_xyz[:, 2:3] * gt_mask_xyz[:, None]
             ) / gt_mask_xyz.sum().float().clamp(min=1.0)
             x += xx.item()
             y += yy.item()
             z += zz.item()
-            i += 1
-        print('x', x / i)
+            i +=1
+        print('x', x / i)    
         print('y', y / i)
         print('z', z / i)
-
-    return
-
-
-def gdrn_save_result_of_dataset(cfg, model, data_loader, output_dir, dataset_name, train_objs=None, amp_test=False):
-    """
-    Run model (in eval mode) on the data_loader and save predictions
-    Args:
-        cfg: config
-        model (nn.Module): a module which accepts an object from
-            `data_loader` and returns some outputs. It will be temporarily set to `eval` mode.
-
-            If you wish to evaluate a model in `training` mode instead, you can
-            wrap the given model and override its behavior of `.eval()` and `.train()`.
-        data_loader: an iterable object with a length.
-            The elements it generates will be the inputs to the model.
-    Returns:
-        The return value of `evaluator.evaluate()`
-    """
-    num_devices = get_world_size()
-    logger = logging.getLogger(__name__)
-    logger.info("Start inference on {} images".format(len(data_loader)))
-
-    # NOTE: dataset name should be the same as TRAIN to get the correct meta
-    _metadata = MetadataCatalog.get(dataset_name)
-    data_ref = ref.__dict__[_metadata.ref_key]
-    obj_names = _metadata.objs
-    obj_ids = [data_ref.obj2id[obj_name] for obj_name in obj_names]
-
-    if cfg.TEST.get("COLOR_AUG", False):
-        result_name = "results_color_aug.pkl"
-    else:
-        result_name = "results.pkl"
-    # NOTE: should be the same as the evaluation output dir
-    output_dir = osp.join(output_dir, dataset_name)
-    output_dir = osp.join(output_dir, train_objs[0])
-    mmcv.mkdir_or_exist(output_dir)
-    result_path = osp.join(output_dir, result_name)
-    if osp.exists(result_path):
-        logger.warning("{} exists, overriding!".format(result_path))
-
-    total = len(data_loader)  # inference data loader must have a fixed length
-    result_dict = {}
-    test_bbox_type = cfg.TEST.TEST_BBOX_TYPE
-    if test_bbox_type == "gt":
-        bbox_key = "bbox"
-    else:
-        bbox_key = f"bbox_{test_bbox_type}"
-
-    logging_interval = 50
-    num_warmup = min(5, logging_interval - 1, total - 1)
-    start_time = time.perf_counter()
-    total_compute_time = 0
-    with inference_context(model), torch.no_grad():
-        for idx, inputs in enumerate(data_loader):
-            if idx == num_warmup:
-                start_time = time.perf_counter()
-                total_compute_time = 0
-
-            start_compute_time = time.perf_counter()
-            # process input ----------------------------------------------------------
-            if not isinstance(inputs, list):
-                inputs = [inputs]
-            batch = batch_data(cfg, inputs, phase="test")
-            if train_objs is not None:
-                roi_labels = batch["roi_cls"].cpu().numpy().tolist()
-                # obj names in this test batch
-                cur_obj_names = [obj_names[_l] for _l in roi_labels]
-                if all(_obj not in train_objs for _obj in cur_obj_names):
-                    continue
-            # NOTE: do model inference -----------------------------
-
-            with autocast(enabled=amp_test):
-                out_dict = model(
-                    batch["roi_img"],
-                    roi_classes=batch["roi_cls"],
-                    roi_cams=batch["roi_cam"],
-                    roi_whs=batch["roi_wh"],
-                    roi_centers=batch["roi_center"],
-                    resize_ratios=batch["resize_ratio"],
-                    roi_coord_2d=batch.get("roi_coord_2d", None),
-                    roi_extents=batch.get("roi_extent", None),
-                    fps=batch.get("fps", None)
-
-                )
-            if torch.cuda.is_available():
-                torch.cuda.synchronize()
-            cur_compute_time = time.perf_counter() - start_compute_time
-            total_compute_time += cur_compute_time
-
-            # convert raw mask (out size) to mask in image ---------------------------------------------------------------------
-            raw_masks = out_dict["mask"]
-            mask_probs = get_out_mask(cfg, raw_masks)
-
-            # for crop and resize
-            bs = batch["roi_cls"].shape[0]
-            tensor_kwargs = {"dtype": torch.float32, "device": "cuda"}
-            rois_xy0 = batch["roi_center"] - \
-                batch["scale"].view(bs, -1) / 2  # bx2
-            rois_xy1 = batch["roi_center"] + \
-                batch["scale"].view(bs, -1) / 2  # bx2
-            batch["inst_rois"] = torch.cat(
-                [torch.arange(bs, **tensor_kwargs).view(-1, 1), rois_xy0, rois_xy1], dim=1)
-
-            im_H = int(batch["im_H"][0])
-            im_W = int(batch["im_W"][0])
-            # BHW
-            masks_in_im = paste_masks_in_image(
-                mask_probs[:, 0, :, :],
-                batch["inst_rois"][:, 1:5],
-                image_shape=(im_H, im_W),
-                threshold=0.5,
-            )
-            masks_np = masks_in_im.detach().to(torch.uint8).cpu().numpy()
-            masks_rle = [binary_mask_to_rle(
-                _m, compressed=True) for _m in masks_np]
-
-            # NOTE: process results ----------------------------------------------------------------------
-            i_out = -1
-            for i_in, _input in enumerate(inputs):
-                for i_inst in range(len(_input["roi_img"])):
-                    if _input["score"][i_inst] < 0.3:
-                        continue
-                    i_out += 1
-
-                    scene_im_id = _input["scene_im_id"][i_inst]
-                    cur_obj_id = obj_ids[int(batch["roi_cls"][i_out])]
-                    cur_res = {
-                        "obj_id": cur_obj_id,
-                        "score": float(_input["score"][i_inst]),
-                        # xyxy
-                        bbox_key: _input[bbox_key][i_inst].detach().cpu().numpy(),
-                        "mask": masks_rle[i_out],  # save mask as rle
-                    }
-                    cur_res.update(
-                        {
-                            "R": out_dict["rot"][i_out].detach().cpu().numpy(),
-                            "t": out_dict["trans"][i_out].detach().cpu().numpy(),
-                        }
-                    )
-
-                    if scene_im_id not in result_dict:
-                        result_dict[scene_im_id] = []
-                    # each image's results saved as a list
-                    result_dict[scene_im_id].append(cur_res)
-
-                    # end vis ----------------------------------------------------------------------
-
-            # -----------------------------------------------------------------------------------------
-            if (idx + 1) % logging_interval == 0:
-                duration = time.perf_counter() - start_time
-                seconds_per_img = duration / (idx + 1 - num_warmup)
-                eta = datetime.timedelta(seconds=int(
-                    seconds_per_img * (total - num_warmup) - duration))
-                logger.info(
-                    "Inference done {}/{}. {:.4f} s / img. ETA={}".format(
-                        idx + 1, total, seconds_per_img, str(eta))
-                )
-
-    # Measure the time only for this worker (before the synchronization barrier)
-    total_time = time.perf_counter() - start_time
-    total_time_str = str(datetime.timedelta(seconds=total_time))
-    # NOTE this format is parsed by grep
-    logger.info(
-        f"Total inference time: {total_time_str} "
-        f"({total_time / (total - num_warmup):.6f} s / img per device, on {num_devices} devices)"
-    )
-    # pure forward time
-    total_compute_time_str = str(
-        datetime.timedelta(seconds=int(total_compute_time)))
-    logger.info(
-        "Total inference pure compute time: {} ({:.6f} s / img per device, on {} devices)".format(
-            total_compute_time_str, total_compute_time /
-            (total - num_warmup), num_devices
-        )
-    )
-
-    mmcv.dump(result_dict, result_path)
-    logger.info("Results saved to {}".format(result_path))
-
+            
+    return 
 
 def gdrn_inference_on_dataset(cfg, model, data_loader, evaluator, amp_test=False):
     """Run model on the data_loader and evaluate the metrics with evaluator.
@@ -838,7 +633,7 @@ def gdrn_inference_on_dataset(cfg, model, data_loader, evaluator, amp_test=False
                     roi_coord_2d=batch.get("roi_coord_2d", None),
                     roi_extents=batch.get("roi_extent", None),
                     fps=batch.get("fps", None)
-
+                    
                 )
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
@@ -858,10 +653,8 @@ def gdrn_inference_on_dataset(cfg, model, data_loader, evaluator, amp_test=False
             iters_after_start = idx + 1 - num_warmup * int(idx >= num_warmup)
             seconds_per_img = total_compute_time / iters_after_start
             if idx >= num_warmup * 2 or seconds_per_img > 5:
-                total_seconds_per_img = (
-                    time.perf_counter() - start_time) / iters_after_start
-                eta = datetime.timedelta(seconds=int(
-                    total_seconds_per_img * (total - idx - 1)))
+                total_seconds_per_img = (time.perf_counter() - start_time) / iters_after_start
+                eta = datetime.timedelta(seconds=int(total_seconds_per_img * (total - idx - 1)))
                 log_every_n_seconds(
                     logging.INFO, f"Inference done {idx+1}/{total}. {seconds_per_img:.4f} s / img. ETA={str(eta)}", n=5
                 )
@@ -875,21 +668,17 @@ def gdrn_inference_on_dataset(cfg, model, data_loader, evaluator, amp_test=False
         f"({total_time / (total - num_warmup):.6f} s / img per device, on {num_devices} devices)"
     )
     # pure forward time
-    total_compute_time_str = str(
-        datetime.timedelta(seconds=int(total_compute_time)))
+    total_compute_time_str = str(datetime.timedelta(seconds=int(total_compute_time)))
     logger.info(
         "Total inference pure compute time: {} ({:.6f} s / img per device, on {} devices)".format(
-            total_compute_time_str, total_compute_time /
-            (total - num_warmup), num_devices
+            total_compute_time_str, total_compute_time / (total - num_warmup), num_devices
         )
     )
     # post_process time
-    total_process_time_str = str(
-        datetime.timedelta(seconds=int(total_process_time)))
+    total_process_time_str = str(datetime.timedelta(seconds=int(total_process_time)))
     logger.info(
         "Total inference post process time: {} ({:.6f} s / img per device, on {} devices)".format(
-            total_process_time_str, total_process_time /
-            (total - num_warmup), num_devices
+            total_process_time_str, total_process_time / (total - num_warmup), num_devices
         )
     )
 
@@ -964,8 +753,7 @@ def save_result_of_dataset(cfg, model, data_loader, output_dir, dataset_name):
                     pred_masks = instances.pred_masks  # (#objs, imH, imW)
                     pred_masks = pred_masks.detach().cpu().numpy()
                     # NOTE: time comsuming step
-                    rles = [binary_mask_to_rle(pred_masks[_k])
-                            for _k in range(len(pred_masks))]
+                    rles = [binary_mask_to_rle(pred_masks[_k]) for _k in range(len(pred_masks))]
 
                 instances = instances.to(cpu_device)
                 boxes = instances.pred_boxes.tensor.clone().detach().cpu().numpy()  # xyxy
@@ -973,11 +761,9 @@ def save_result_of_dataset(cfg, model, data_loader, output_dir, dataset_name):
                 scores = instances.scores.tolist()
                 labels = instances.pred_classes.detach().cpu().numpy()
 
-                obj_ids = [
-                    data_ref.obj2id[obj_names[int(label)]] for label in labels]
+                obj_ids = [data_ref.obj2id[obj_names[int(label)]] for label in labels]
                 ego_quats = instances.pred_ego_quats.detach().cpu().numpy()
-                ego_rots = [quat2mat(ego_quats[k])
-                            for k in range(len(ego_quats))]
+                ego_rots = [quat2mat(ego_quats[k]) for k in range(len(ego_quats))]
                 transes = instances.pred_transes.detach().cpu().numpy()
 
                 cur_results = {
@@ -995,11 +781,9 @@ def save_result_of_dataset(cfg, model, data_loader, output_dir, dataset_name):
                     import cv2
                     from lib.vis_utils.image import vis_image_mask_bbox_cv2
 
-                    image = (images_ori[i].detach().cpu().numpy(
-                    ).transpose(1, 2, 0) + 0.5).astype("uint8")
+                    image = (images_ori[i].detach().cpu().numpy().transpose(1, 2, 0) + 0.5).astype("uint8")
                     img_vis = vis_image_mask_bbox_cv2(
-                        image, pred_masks, boxes, labels=[
-                            obj_names[int(label)] for label in labels]
+                        image, pred_masks, boxes, labels=[obj_names[int(label)] for label in labels]
                     )
                     cv2.imshow("img", img_vis.astype("uint8"))
                     cv2.waitKey()
@@ -1008,11 +792,9 @@ def save_result_of_dataset(cfg, model, data_loader, output_dir, dataset_name):
             if (idx + 1) % logging_interval == 0:
                 duration = time.perf_counter() - start_time
                 seconds_per_img = duration / (idx + 1 - num_warmup)
-                eta = datetime.timedelta(seconds=int(
-                    seconds_per_img * (total - num_warmup) - duration))
+                eta = datetime.timedelta(seconds=int(seconds_per_img * (total - num_warmup) - duration))
                 logger.info(
-                    "Inference done {}/{}. {:.4f} s / img. ETA={}".format(
-                        idx + 1, total, seconds_per_img, str(eta))
+                    "Inference done {}/{}. {:.4f} s / img. ETA={}".format(idx + 1, total, seconds_per_img, str(eta))
                 )
 
     # Measure the time only for this worker (before the synchronization barrier)
@@ -1024,12 +806,10 @@ def save_result_of_dataset(cfg, model, data_loader, output_dir, dataset_name):
             total_time_str, total_time / (total - num_warmup), num_devices
         )
     )
-    total_compute_time_str = str(
-        datetime.timedelta(seconds=int(total_compute_time)))
+    total_compute_time_str = str(datetime.timedelta(seconds=int(total_compute_time)))
     logger.info(
         "Total inference pure compute time: {} ({:.6f} s / img per device, on {} devices)".format(
-            total_compute_time_str, total_compute_time /
-            (total - num_warmup), num_devices
+            total_compute_time_str, total_compute_time / (total - num_warmup), num_devices
         )
     )
 

@@ -36,7 +36,7 @@ from core.utils.utils import get_emb_show
 from core.utils.data_utils import denormalize_image
 from .data_loader import build_gdrn_train_loader, build_gdrn_test_loader
 from .engine_utils import batch_data, get_out_coor, get_out_mask
-from .gdrn_evaluator import gdrn_inference_on_dataset, GDRN_Evaluator, test_coordinate_regression, gdrn_save_result_of_dataset
+from .gdrn_evaluator import gdrn_inference_on_dataset, GDRN_Evaluator, test_coordinate_regression
 from .gdrn_custom_evaluator import GDRN_EvaluatorCustom
 import ref
 
@@ -122,40 +122,6 @@ class GDRN_Lite(LightningLite):
         tbx_event_writer = MyTensorboardXWriter(
             tb_logdir, backend="tensorboardX")
         return tbx_event_writer
-
-    def do_save_results(self, cfg, model, epoch=None, iteration=None):
-        model_name = osp.basename(cfg.MODEL.WEIGHTS).split(".")[0]
-
-        # dataset_meta = MetadataCatalog.get(cfg.DATASETS.TRAIN[0])
-        # train_obj_names = dataset_meta.objs
-
-        for dataset_name in cfg.DATASETS.TEST:
-            if epoch is not None and iteration is not None:
-                evaluator = self.get_evaluator(
-                    cfg,
-                    dataset_name,
-                    osp.join(
-                        cfg.OUTPUT_DIR, f"inference_epoch_{epoch}_iter_{iteration}", dataset_name),
-                )
-            else:
-                evaluator = self.get_evaluator(
-                    cfg, dataset_name, osp.join(
-                        cfg.OUTPUT_DIR, f"inference_{model_name}", dataset_name)
-                )
-            data_loader = build_gdrn_test_loader(
-                cfg, dataset_name, train_objs=evaluator.train_objs)
-            data_loader = self.setup_dataloaders(
-                data_loader, replace_sampler=False, move_to_device=False)
-
-            gdrn_save_result_of_dataset(
-                cfg,
-                model,
-                data_loader,
-                output_dir='./cir/output',
-                dataset_name=dataset_name,
-                train_objs=evaluator.train_objs,
-                amp_test=cfg.TEST.AMP_TEST,
-            )
 
     def do_test(self, cfg, model, epoch=None, iteration=None, debug=False):
         results = OrderedDict()

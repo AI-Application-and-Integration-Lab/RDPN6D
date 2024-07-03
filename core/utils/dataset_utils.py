@@ -39,8 +39,7 @@ def flat_dataset_dicts(dataset_dicts):
     """
     new_dicts = []
     for dataset_dict in dataset_dicts:
-        img_infos = {_k: _v for _k, _v in dataset_dict.items() if _k not in [
-            "annotations"]}
+        img_infos = {_k: _v for _k, _v in dataset_dict.items() if _k not in ["annotations"]}
         if "annotations" in dataset_dict:
             for inst_id, anno in enumerate(dataset_dict["annotations"]):
                 rec = {"inst_id": inst_id, "inst_infos": anno}
@@ -61,8 +60,7 @@ def filter_invalid_in_dataset_dicts(dataset_dicts, visib_thr=0.0):
     num_filtered = 0
     new_dicts = []
     for dataset_dict in dataset_dicts:
-        new_dict = {_k: _v for _k, _v in dataset_dict.items() if _k not in [
-            "annotations"]}
+        new_dict = {_k: _v for _k, _v in dataset_dict.items() if _k not in ["annotations"]}
         if "annotations" in dataset_dict:
             new_annos = []
             for inst_id, anno in enumerate(dataset_dict["annotations"]):
@@ -76,8 +74,7 @@ def filter_invalid_in_dataset_dicts(dataset_dicts, visib_thr=0.0):
 
         new_dicts.append(new_dict)
     if num_filtered > 0:
-        logger.warning(
-            f"filtered out {num_filtered} instances with visib_fract <= {visib_thr}")
+        logger.warning(f"filtered out {num_filtered} instances with visib_fract <= {visib_thr}")
     return new_dicts
 
 
@@ -113,8 +110,7 @@ def filter_empty_dets(dataset_dicts):
     dataset_dicts = [x for x in dataset_dicts if valid(x["annotations"])]
     num_after = len(dataset_dicts)
     logger = logging.getLogger(__name__)
-    logger.warning("Removed {} images with empty detections. {} images left.".format(
-        num_before - num_after, num_after))
+    logger.warning("Removed {} images with empty detections. {} images left.".format(num_before - num_after, num_after))
     return dataset_dicts
 
 
@@ -132,8 +128,7 @@ def load_detections_into_dataset(
         list[dict]: the same format as dataset_dicts, but added proposal field.
     """
 
-    logger.info("Loading detections for {} from: {}".format(
-        dataset_name, det_file))
+    logger.info("Loading detections for {} from: {}".format(dataset_name, det_file))
     detections = mmcv.load(det_file)
 
     meta = MetadataCatalog.get(dataset_name)
@@ -154,7 +149,7 @@ def load_detections_into_dataset(
         for det in dets_i:
             obj_id = det["obj_id"]
             bbox_est = det["bbox_est"]  # xywh
-            score = det["score"]
+            score = det.get("score", 1.0)
             if score < score_thr:
                 continue
             obj_name = data_ref.id2obj[obj_id]
@@ -173,9 +168,8 @@ def load_detections_into_dataset(
                 "bbox_est": bbox_est,
                 "bbox_mode": BoxMode.XYWH_ABS,
                 "score": score,
-                # TODO: maybe just load this in the main function
-                "model_info": models_info[str(obj_id)],
-
+                "model_info": models_info[str(obj_id)],  # TODO: maybe just load this in the main function
+                
             }
             obj_annotations[obj_name].append(inst)
         for obj, cur_annos in obj_annotations.items():
@@ -185,14 +179,13 @@ def load_detections_into_dataset(
             ]
             annotations.extend(sel_annos)
         for anno_i, annotation in enumerate(annotations):
-            annotation['xyz_path'] = os.path.join(
-                '/disk2/RGBD-6dpose/GDR-Net/datasets/BOP_DATASETS/lmo/test/xyz_crop/', f"{scene_id:06d}/{im_id:06d}_{anno_i:06d}-xyz.pkl")
+            annotation['xyz_path'] = os.path.join('/disk2/RGBD-6dpose/GDR-Net/datasets/BOP_DATASETS/lmo/test/xyz_crop/', f"{scene_id:06d}/{im_id:06d}_{anno_i:06d}-xyz.pkl")
         # NOTE: maybe [], no detections
         record["annotations"] = annotations
 
     return dataset_dicts
 
-
+ 
 def my_build_batch_data_loader(dataset, sampler, total_batch_size, *, aspect_ratio_grouping=False, num_workers=0):
     """Build a batched dataloader for training.
 
@@ -229,8 +222,7 @@ def my_build_batch_data_loader(dataset, sampler, total_batch_size, *, aspect_rat
             dataset,
             sampler=sampler,
             batch_sampler=None,
-            # don't batch, but yield individual elements
-            collate_fn=operator.itemgetter(0),
+            collate_fn=operator.itemgetter(0),  # don't batch, but yield individual elements
             worker_init_fn=worker_init_reset_seed,
             **kwargs,
         )  # yield individual mapped dict

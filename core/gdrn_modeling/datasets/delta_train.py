@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 DATASETS_ROOT = osp.normpath(osp.join(PROJ_ROOT, "datasets"))
 
 
-class TLESS_PBR_Dataset:
+class Delta_train_Dataset:
     def __init__(self, data_cfg):
         """
         Set with_depth and with_masks default to True,
@@ -34,10 +34,10 @@ class TLESS_PBR_Dataset:
         """
         self.name = data_cfg["name"]
         self.data_cfg = data_cfg
-        self.ann_file = data_cfg.get("ann_file")
+
         self.objs = data_cfg["objs"]  # selected objects
 
-        self.dataset_root = data_cfg.get("dataset_root", osp.join(DATASETS_ROOT, "BOP_DATASETS/tless/train_pbr"))
+        self.dataset_root = data_cfg.get("dataset_root", osp.join(DATASETS_ROOT, "BOP_DATASETS/delta/train"))
         self.xyz_root = data_cfg.get("xyz_root", osp.join(self.dataset_root, "xyz_crop"))
         assert osp.exists(self.dataset_root), self.dataset_root
         self.models_root = data_cfg["models_root"]  # BOP_DATASETS/lm/models
@@ -56,19 +56,19 @@ class TLESS_PBR_Dataset:
         ##################################################
 
         # NOTE: careful! Only the selected objects
-        self.cat_ids = [cat_id for cat_id, obj_name in ref.tless_full.id2obj.items() if obj_name in self.objs]
+        self.cat_ids = [cat_id for cat_id, obj_name in ref.delta_full.id2obj.items() if obj_name in self.objs]
         # map selected objs to [0, num_objs-1]
         self.cat2label = {v: i for i, v in enumerate(self.cat_ids)}  # id_map
         self.label2cat = {label: cat for cat, label in self.cat2label.items()}
         self.obj2label = OrderedDict((obj, obj_id) for obj_id, obj in enumerate(self.objs))
         ##########################################################
-        if 'train' in self.name and 'pbr' in self.name:
+       
+        if self.name == "delta":
             self.scenes = [f"{i:06d}" for i in range(50)]
-        elif 'train' in self.name and 'real' in self.name:
-            self.scenes = [f"{i:06d}" for i in range(1,31)]
-        else:
-            self.scenes = [f"{i:06d}" for i in range(1,21)]
-        
+        elif self.name == "delta_test":
+            self.scenes = [f"{i:06d}" for i in range(50,55)]
+        elif self.name == "delta_real":
+            self.scenes = ["000000"]
 
     def __call__(self):
         """Load light-weight instance annotations of all images into a list of
@@ -100,20 +100,16 @@ class TLESS_PBR_Dataset:
         dataset_dicts = []  # ######################################################
         # it is slow because of loading and converting masks to rle
         for scene in tqdm(self.scenes):
-            scene_root = osp.join(self.dataset_root, scene)
             scene_id = int(scene)
-            
-
+            scene_root = osp.join(self.dataset_root, scene)
+           
             gt_dict = mmcv.load(osp.join(scene_root, "scene_gt.json"))
             gt_info_dict = mmcv.load(osp.join(scene_root, "scene_gt_info.json"))
             cam_dict = mmcv.load(osp.join(scene_root, "scene_camera.json"))
-    
+     
             for str_im_id in tqdm(gt_dict, postfix=f"{scene_id}"):
-                
                 int_im_id = int(str_im_id)
                 rgb_path = osp.join(scene_root, "rgb/{:06d}.jpg").format(int_im_id)
-                if 'real' in self.name:
-                    rgb_path = osp.join(scene_root, "rgb/{:06d}.png").format(int_im_id)
                 assert osp.exists(rgb_path), rgb_path
 
                 depth_path = osp.join(scene_root, "depth/{:06d}.png".format(int_im_id))
@@ -154,28 +150,35 @@ class TLESS_PBR_Dataset:
                     x1, y1, w, h = bbox_visib
                     
                     if self.filter_invalid:
-                        if h <= 1 or w <= 1:
+                        if h <= 10 or w <= 10:
                             self.num_instances_without_valid_box += 1
                             continue
 
-                    mask_file = osp.join(scene_root, "mask/{:06d}_{:06d}.png".format(int_im_id, anno_i))
-                    mask_visib_file = osp.join(scene_root, "mask_visib/{:06d}_{:06d}.png".format(int_im_id, anno_i))
+                    if self.with_masks:
+                        mask_file = osp.join(scene_root, "mask/{:06d}_{:06d}.png".format(int_im_id, anno_i))
+                        mask_visib_file = osp.join(scene_root, "mask_visib/{:06d}_{:06d}.png".format(int_im_id, anno_i))
+                    else:
+                        mask_file = osp.join(scene_root, "mask/0.png")
+                        mask_visib_file = osp.join(scene_root, "mask/0.png")
                     assert osp.exists(mask_file), mask_file
                     assert osp.exists(mask_visib_file), mask_visib_file
                     # load mask visib  TODO: load both mask_visib and mask_full
                     mask_single = mmcv.imread(mask_visib_file, "unchanged")
                     area = mask_single.sum()
-                    if area < 3:  # filter out too small or nearly invisible instances
+                    #if area < 138240:  # filter out too small or nearly invisible instances
+                    if area < 138240:
                         self.num_instances_without_valid_segmentation += 1
                         continue
 
                     visib_fract = gt_info_dict[str_im_id][anno_i].get("visib_fract", 1.0)
 
                     mask_rle = binary_mask_to_rle(mask_single, compressed=True)
-                    
-                    xyz_path = osp.join(self.xyz_root, f"{scene_id:06d}/{int_im_id:06d}_{anno_i:06d}-xyz.pkl")
-                    if 'test' not in self.name:
+                    if self.name != "delta_test" and self.name != "delta_real":
+                        xyz_path = osp.join(self.xyz_root, f"{scene_id:06d}/{int_im_id:06d}_{anno_i:06d}-xyz.pkl")
                         assert osp.exists(xyz_path), xyz_path
+                    else:
+                        xyz_path = ""
+                    
                     inst = {
                         "category_id": cur_label,  # 0-based label
                         "bbox": bbox_visib,  # TODO: load both bbox_obj and bbox_visib
@@ -201,6 +204,7 @@ class TLESS_PBR_Dataset:
                     continue
                 record["annotations"] = insts
                 dataset_dicts.append(record)
+
         if self.num_instances_without_valid_segmentation > 0:
             logger.warning(
                 "Filtered out {} instances without valid segmentation. "
@@ -242,7 +246,7 @@ class TLESS_PBR_Dataset:
         models = []
         for obj_name in self.objs:
             model = inout.load_ply(
-                osp.join(self.models_root, f"obj_{ref.tless_full.obj2id[obj_name]:06d}.ply"),
+                osp.join(self.models_root, f"obj_{ref.delta_full.obj2id[obj_name]:06d}.ply"),
                 vertex_scale=self.scale_to_meter,
             )
             # NOTE: the bbox3d_and_center is not obtained from centered vertices
@@ -261,7 +265,7 @@ class TLESS_PBR_Dataset:
 ########### register datasets ############################################################
 
 
-def get_lm_metadata(obj_names, ref_key):
+def get_delta_metadata(obj_names, ref_key):
     """task specific metadata."""
 
     data_ref = ref.__dict__[ref_key]
@@ -283,109 +287,78 @@ def get_lm_metadata(obj_names, ref_key):
     return meta
 
 
-TLESS_OBJECTS = [str(i) for i in range(1, 30 + 1)]
+DELTA_9_OBJECTS = [
+    "DC_drive",
+   "DC_screwdriver",
+   "Kilews",
+   "CHASSIS_1300",
+   "COVER_1300",
+   "DELTA_IA-ROBOT",
+   "Assemble",
+   "CHASSIS_colored",
+   "COVER_colored",
+    
+]  # no bowl, cup
 
-tless_model_root = "BOP_DATASETS/tless/models_reconst/"
+delta_model_root = "BOP_DATASETS/delta/models/"
 
 ################################################################################
 
 
-SPLITS_TLESS_PBR = dict(
-    tless_train_pbr=dict(
-        name="tless_train_pbr",
-        objs=TLESS_OBJECTS,  # selected objects
-        dataset_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/tless/train_pbr"),
-        models_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/tless/models_reconst"),
-        xyz_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/tless/train_pbr/xyz_crop"),
+SPLITS_DELTA_PBR = dict(
+    delta_train=dict(
+        name="delta",
+        objs=DELTA_9_OBJECTS,  # selected objects
+        dataset_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/delta/train"),
+        models_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/delta/models"),
+        xyz_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/delta/train/xyz_crop"),
         scale_to_meter=0.001,
         with_masks=True,  # (load masks but may not use it)
         with_depth=True,  # (load depth path here, but may not use it)
-        height=540,
-        width=720,
+        height=480,
+        width=640,
         cache_dir=osp.join(PROJ_ROOT, ".cache"),
         use_cache=True,
         num_to_load=-1,
         filter_invalid=True,
-        ref_key="tless_full",
-    )
+        ref_key="delta_full",
+    ),
+    delta_test=dict(
+        name="delta_test",
+        objs=DELTA_9_OBJECTS,  # selected objects
+        dataset_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/delta/test"),
+        models_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/delta/models_eval"),
+        xyz_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/delta/xyz_crop"),
+        scale_to_meter=0.001,
+        with_masks=True,  # (load masks but may not use it)
+        with_depth=True,  # (load depth path here, but may not use it)
+        height=480,
+        width=640,
+        cache_dir=osp.join(PROJ_ROOT, ".cache"),
+        use_cache=True,
+        num_to_load=-1,
+        filter_invalid=True,
+        ref_key="delta_full",
+    ),
+    delta_real=dict(
+        name="delta_real",
+        objs=DELTA_9_OBJECTS,  # selected objects
+        dataset_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/delta/real"),
+        models_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/delta/models_eval"),
+        scale_to_meter=0.001,
+        with_masks=False,
+        with_depth=True,  # (load depth path here, but may not use it)
+        height=480,
+        width=640,
+        cache_dir=osp.join(PROJ_ROOT, ".cache"),
+        use_cache=True,
+        num_to_load=-1,
+        filter_invalid=True,
+        ref_key="delta_full",
+    ),
 )
 
-# single obj splits
-for obj in ref.tless_full.objects:
-    for split in ["train"]:
-        name = "tless_pbr_{}_{}".format(obj, split)
-        if split in ["train"]:
-            filter_invalid = True
-        elif split in ["test"]:
-            filter_invalid = False
-        else:
-            raise ValueError("{}".format(split))
-        if name not in SPLITS_TLESS_PBR:
-            SPLITS_TLESS_PBR[name] = dict(
-                name=name,
-                objs=[obj],  # only this obj
-                dataset_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/tless/train_pbr"),
-                models_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/tless/models_reconst"),
-                xyz_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/tless/train_pbr/xyz_crop"),
-                scale_to_meter=0.001,
-                with_masks=True,  # (load masks but may not use it)
-                with_depth=True,  # (load depth path here, but may not use it)
-                height=540,
-                width=720,
-                cache_dir=osp.join(PROJ_ROOT, ".cache"),
-                use_cache=True,
-                num_to_load=-1,
-                filter_invalid=filter_invalid,
-                ref_key="tless_full",
-            )
 
-for obj in ref.tless_full.objects:
-    for split in ["train", "test"]:
-        name = "tless_real_{}_{}".format(obj, split)
-        if split in ["train"]:
-            filter_invalid = True
-            if name not in SPLITS_TLESS_PBR:
-                SPLITS_TLESS_PBR[name] = dict(
-                    name=name,
-                    objs=[obj],  # only this obj
-                    dataset_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/tless/train_primesense"),
-                    models_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/tless/models_reconst"),
-                    xyz_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/tless/train_primesense/xyz_crop"),
-                    scale_to_meter=0.001,
-                    with_masks=True,  # (load masks but may not use it)
-                    with_depth=True,  # (load depth path here, but may not use it)
-                    height=400,
-                    width=400,
-                    cache_dir=osp.join(PROJ_ROOT, ".cache"),
-                    use_cache=True,
-                    num_to_load=-1,
-                    filter_invalid=filter_invalid,
-                    ref_key="tless_full",
-                )
-        elif split in ["test"]:
-            filter_invalid = False
-            if name not in SPLITS_TLESS_PBR:
-                SPLITS_TLESS_PBR[name] = dict(
-                    name=name,
-                    objs=[obj],  # only this obj
-                    dataset_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/tless/test_primesense"),
-                    models_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/tless/models_reconst"),
-                    ann_file=osp.join(DATASETS_ROOT, "BOP_DATASETS/tless/test_targets_bop19.json"),
-                    xyz_root=osp.join(DATASETS_ROOT, "BOP_DATASETS/tless/train_primesense/xyz_crop"),
-                    scale_to_meter=0.001,
-                    with_masks=True,  # (load masks but may not use it)
-                    with_depth=True,  # (load depth path here, but may not use it)
-                    height=540,
-                    width=720,
-                    cache_dir=osp.join(PROJ_ROOT, ".cache"),
-                    use_cache=True,
-                    num_to_load=-1,
-                    filter_invalid=filter_invalid,
-                    ref_key="tless_full",
-                )
-        else:
-            raise ValueError("{}".format(split))
-        
 
 def register_with_name_cfg(name, data_cfg=None):
     """Assume pre-defined datasets live in `./datasets`.
@@ -397,25 +370,25 @@ def register_with_name_cfg(name, data_cfg=None):
             data_cfg can be set in cfg.DATA_CFG.name
     """
     dprint("register dataset: {}".format(name))
-    if name in SPLITS_TLESS_PBR:
-        used_cfg = SPLITS_TLESS_PBR[name]
+    if name in SPLITS_DELTA_PBR:
+        used_cfg = SPLITS_DELTA_PBR[name]
     else:
         assert data_cfg is not None, f"dataset name {name} is not registered"
         used_cfg = data_cfg
-    DatasetCatalog.register(name, TLESS_PBR_Dataset(used_cfg))
+    DatasetCatalog.register(name, Delta_train_Dataset(used_cfg))
     # something like eval_types
     MetadataCatalog.get(name).set(
-        id="tless",  # NOTE: for pvnet to determine module
+        id="delta",  # NOTE: for pvnet to determine module
         ref_key=used_cfg["ref_key"],
         objs=used_cfg["objs"],
         eval_error_types=["ad", "rete", "proj"],
         evaluator_type="bop",
-        **get_lm_metadata(obj_names=used_cfg["objs"], ref_key=used_cfg["ref_key"]),
+        **get_delta_metadata(obj_names=used_cfg["objs"], ref_key=used_cfg["ref_key"]),
     )
 
 
 def get_available_datasets():
-    return list(SPLITS_TLESS_PBR.keys())
+    return list(SPLITS_DELTA_PBR.keys())
 
 
 #### tests ###############################################
@@ -423,16 +396,15 @@ def get_available_datasets():
 def load_pointcloud():
     import open3d as o3d
     models = []
-    for i in range(1,31):
-        
-        pcd = o3d.io.read_point_cloud(f'{DATASETS_ROOT}/BOP_DATASETS/tless/models_reconst/obj_0000{i:02d}.ply')
+    for i in range(1,10):
+        pcd = o3d.io.read_point_cloud('/disk2/RGBD-6dpose/GDR-Net/datasets/BOP_DATASETS/delta/models/obj_0000{:02d}.ply'.format(i))
         pcd = np.asarray(pcd.points)
         models.append(pcd)
     return models
     
 def test_vis():
     import open3d as o3d
-    dset_name = 'tless_real_2_train'
+    dset_name = sys.argv[1]
     models = load_pointcloud()
     assert dset_name in DatasetCatalog.list()
 
@@ -447,8 +419,8 @@ def test_vis():
     dirname = "output/{}-data-vis".format(dset_name)
     os.makedirs(dirname, exist_ok=True)
     for d in dicts:
-        img = read_image_cv2("/media/sda1/r10922190/RDPN-main/" + d["file_name"], format="BGR")
-        depth = mmcv.imread("/media/sda1/r10922190/RDPN-main/" + d["depth_file"], "unchanged") / 1000.0
+        img = read_image_cv2(d["file_name"], format="BGR")
+        depth = mmcv.imread(d["depth_file"], "unchanged") / 10000.0
         # read pointcloud
         
         imH, imW = img.shape[:2]
@@ -538,7 +510,7 @@ if __name__ == "__main__":
 
     print("sys.argv:", sys.argv)
     setup_logger()
-    register_with_name_cfg( 'tless_real_2_train')
+    register_with_name_cfg(sys.argv[1])
     print("dataset catalog: ", DatasetCatalog.list())
 
     test_vis()

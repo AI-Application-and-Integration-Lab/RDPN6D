@@ -269,8 +269,8 @@ SPLITS_ITODD = dict(
 
 # single obj splits for itodd bop test
 for obj in ref.itodd.objects:
-    for split in ["test"]:
-        name = "itodd_pbr_{}_{}".format(obj, split)
+    for split in ["bop_test"]:
+        name = "itodd_{}_{}".format(obj, split)
         ann_files = [
             osp.join(
                 DATASETS_ROOT,

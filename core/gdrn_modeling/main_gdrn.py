@@ -116,9 +116,7 @@ class Lite(GDRN_Lite):
             # sum(p.numel() for p in model.parameters() if p.requires_grad)
             params = sum(p.numel() for p in model.parameters()) / 1e6
             logger.info("{}M params".format(params))
-        if args.save_res:
-            MyCheckpointer(model, save_dir=cfg.OUTPUT_DIR).resume_or_load(cfg.MODEL.WEIGHTS, resume=args.resume)
-            return self.do_save_results(cfg, model)
+
         if args.eval_only:
             
             
