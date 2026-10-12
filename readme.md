@@ -32,7 +32,7 @@ This repository is the official PyTorch implementation of the work:
 Download the 6D pose datasets (LM, LM-O, YCB-V) from the
 [BOP website](https://bop.felk.cvut.cz/datasets/) and MP6D from [MP6D](https://github.com/yhan9848/MP6D)
 
-Please also download the metadata from [[Metadata](https://drive.google.com/drive/folders/1X95-ohc2b6iMTPEl-p4INn63vWx6IWuz?usp=drive_link)].
+Please also download the metadata from [[Metadata](https://huggingface.co/NTU-AI2Lab/RDPN/tree/main/metadata)].
 
 The structure of `datasets` folder should look like below:
 ```
