@@ -116,10 +116,7 @@ Example:
 ./core/gdrn_modeling/test_gdrn.sh configs/gdrn/lmo/a6_cPnP_AugAAETrunc_BG0.5_lmo_real_pbr0.1_40e.py 0 output/gdrn/lmo/a6_cPnP_AugAAETrunc_BG0.5_lmo_real_pbr0.1_40e/gdrn_lmo_real_pbr.pth
 ```
 
-Our trained RDPN models can be found here 
-[[Linemod](https://drive.google.com/drive/folders/1-usllpw8QgoDwp9H2b8_SK05UoU347tQ?usp=sharing)][[Linemod-Occluded](https://drive.google.com/drive/folders/1h7Fb0iQ6F-hK8zf6ezo3jj5bAxTsb8In?usp=sharing)]
-[[YCBV](https://drive.google.com/drive/folders/1cbxsQvUdEvS9tarLY8BYU-4wpiN1PUwH?usp=drive_link)]
-[[MP6D](https://drive.google.com/drive/folders/18z28NK_lLGbRL0RIHZDR8GmVAtoaF13B?usp=sharing)]
+Our trained RDPN models can be found here: [[Hugging Face](https://huggingface.co/NTU-AI2Lab/RDPN)]
 
 
 ## Result
